@@ -59,7 +59,7 @@ tree mesh...
 ![Before merging](images/before.png)
 _before_
 
-![After merging](images/before.png)
+![After merging](images/after.png)
 _after_
 
 
