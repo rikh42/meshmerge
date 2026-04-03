@@ -1,6 +1,6 @@
 ## Mesh Merge for Godot
 
-![The dialog box that pops up](logo.png)
+![Logo](images/logo.png)
 
 A simple addon for Godot that can merge the selected MeshInstance3D's into a single new combined mesh.
 
