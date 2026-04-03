@@ -1,5 +1,7 @@
 ## Mesh Merge for Godot
 
+![The dialog box that pops up](logo.png)
+
 A simple addon for Godot that can merge the selected MeshInstance3D's into a single new combined mesh.
 
 The new mesh will have a single surface material for each unique material in the selected meshes.
