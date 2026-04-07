@@ -6,6 +6,22 @@ A simple addon for Godot that can merge the selected MeshInstance3D's into a sin
 
 The new mesh will have a single surface material for each unique material in the selected meshes.
 
+It is perfect for flattening a group of meshes, such as a cluster of made up of many separate grass, 
+flower and plant meshes, into a single mesh that would be suitable for use in a MultiMeshInstance3D.
+
+### Installing
+
+1. Open your project in Godot and go to the Asset Library tab at the top.
+2. Search for "mesh merge" to find the addon
+3. Choose Download to install it in your addon's folder
+4. Go to "Project -> Project Settings... -> Plugins" and enable the newly installed plugin
+
+or, to manually install it...
+
+1. Download the code from Github at https://github.com/rikh42/meshmerge
+2. Unzip and copy the 'addons' folder into your project
+3. reload Godot
+4. Go to "Project -> Project Settings... -> Plugins" and enable the newly installed plugin
 
 ### How to use.
 
