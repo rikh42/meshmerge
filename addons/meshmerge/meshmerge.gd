@@ -113,11 +113,15 @@ func _update_button_visibility():
 func _on_menu_pressed():
 	# Get selected nodes
 	selected_meshes.clear()
-	var selection = get_editor_interface().get_selection()
-	var selected_nodes = selection.get_selected_nodes()
+
+	# find all the selected nodes and their decendants	
+	var all_nodes: Array[Node] = []
+	for sel in EditorInterface.get_selection().get_top_selected_nodes():
+		all_nodes.append(sel)
+		all_nodes.append_array(sel.find_children("*", "MeshInstance3D", true, false))
 	
-	# Filter for MeshInstance3D nodes
-	for node in selected_nodes:
+	# Filter for MeshInstance3D nodes with a mesh attached
+	for node in all_nodes:
 		if node is MeshInstance3D and node.mesh:
 			selected_meshes.append(node)
 	
@@ -132,7 +136,7 @@ func _on_menu_pressed():
 	
 	# Show the dialog
 	dialog.popup_centered()
-
+	
 func _on_process_confirmed():
 	# Extract values from the dialog
 	threshold = normal_threshold_spinbox.value
@@ -157,6 +161,7 @@ func combine_meshes() -> void:
 		if mi is not MeshInstance3D:
 			continue
 		if mi == null or mi.mesh == null:
+			print('no mesh - skipping')
 			continue
 		
 		var merge_rid : RID
@@ -177,23 +182,21 @@ func combine_meshes() -> void:
 				rid = merge_rid
 			
 			# Do we already have this material in our set?
-			if surface_map.has(rid):
-				var smooth_arrays = mi.mesh.surface_get_arrays(s)
-
-				# Convert additional arrays to a temporary mesh
-				var temp_mesh = ArrayMesh.new()
-				temp_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, process_vertex_arrays(smooth_arrays))
-
-				# Append it
-				surface_map[rid].append_from(temp_mesh, 0, world_xform)
-			else:				
+			if not surface_map.has(rid):
 				var st := SurfaceTool.new()
 				st.begin(Mesh.PRIMITIVE_TRIANGLES)
 				st.set_material(mat)
-				var smooth_arrays = mi.mesh.surface_get_arrays(s)
-				st.create_from_arrays(process_vertex_arrays(smooth_arrays))
 				surface_map[rid] = st
 				material_map[rid] = mat
+
+			var smooth_arrays = mi.mesh.surface_get_arrays(s)
+
+			# Convert additional arrays to a temporary mesh
+			var temp_mesh = ArrayMesh.new()
+			temp_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, process_vertex_arrays(smooth_arrays))
+
+			# Append it
+			surface_map[rid].append_from(temp_mesh, 0, world_xform)
 
 	# now we need to go through each unique material
 	# and add its geometry to the final mesh
@@ -244,7 +247,7 @@ func process_vertex_arrays(arrays: Array) -> Array:
 	var uvs = arrays[Mesh.ARRAY_TEX_UV] if arrays[Mesh.ARRAY_TEX_UV] else null
 	var colors = arrays[Mesh.ARRAY_COLOR] if arrays[Mesh.ARRAY_COLOR] else null
 	var indices = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] else null
-		
+
 	# Build index array if it doesn't exist
 	if indices == null:
 		indices = PackedInt32Array()
@@ -367,85 +370,6 @@ func process_vertex_arrays(arrays: Array) -> Array:
 	output_arrays[Mesh.ARRAY_NORMAL] = new_normals
 	output_arrays[Mesh.ARRAY_TEX_UV] = new_uvs if preserve_uvs else null
 	output_arrays[Mesh.ARRAY_COLOR] = new_colors if preserve_colors else null
-	output_arrays[Mesh.ARRAY_INDEX] = new_indices
-	
-	return output_arrays
-
-
-func process_vertex_arrays_old(arrays: Array) -> Array:
-	var vertices = arrays[Mesh.ARRAY_VERTEX]
-	var normals = arrays[Mesh.ARRAY_NORMAL]
-	#var uvs = arrays[Mesh.ARRAY_TEX_UV] if arrays[Mesh.ARRAY_TEX_UV] else null
-	#var colors = arrays[Mesh.ARRAY_COLOR] if arrays[Mesh.ARRAY_COLOR] else null
-	var indices = arrays[Mesh.ARRAY_INDEX] if arrays[Mesh.ARRAY_INDEX] else null
-	
-	# Build index array if it doesn't exist
-	if indices == null:
-		indices = PackedInt32Array()
-		for i in range(vertices.size()):
-			indices.append(i)
-	
-	print("Input Surface: ")
-	print("vertex count ", vertices.size())
-	print("triangles ", indices.size() / 3.0)
-	
-	# Dictionary to store unique vertex data
-	# Key: String hash of (position, uv, color)
-	# Value: {position, normals_list, uv, color, new_index}
-	var vertex_map = {}
-	var new_vertices = PackedVector3Array()
-	var new_normals = PackedVector3Array()
-	#var new_uvs = PackedVector2Array() if uvs else null
-	#var new_colors = PackedColorArray() if colors else null
-	var new_indices = PackedInt32Array()
-	
-	# Process each vertex
-	for i in range(indices.size()):
-		var idx = indices[i]
-		var pos = vertices[idx]
-		var normal = normals[idx] if normals else Vector3.UP
-		#var uv = uvs[idx] if uvs else Vector2.ZERO
-		#var color = colors[idx] if colors else Color.WHITE
-				
-		var key = make_key(pos, Vector2.ZERO, Color.WHITE)
-		
-		if vertex_map.has(key):
-			# Vertex exists - add normal to the list for averaging
-			vertex_map[key].normals_list.append(normal)
-			new_indices.append(vertex_map[key].new_index)
-		else:
-			# New unique vertex
-			var new_index = new_vertices.size()
-			vertex_map[key] = {
-				"position": pos,
-				"normals_list": [normal],
-				#"uv": uv,
-				#"color": color,
-				"new_index": new_index
-			}
-			new_vertices.append(pos)
-			#if new_uvs != null:
-				#new_uvs.append(uv)
-			#if new_colors != null:
-				#new_colors.append(color)
-			new_indices.append(new_index)
-			
-	# Average normals for each unique vertex
-	for key in vertex_map:
-		var data = vertex_map[key]
-		var avg_normal = Vector3.ZERO
-		for n in data.normals_list:
-			avg_normal += n
-		avg_normal = avg_normal.normalized()
-		new_normals.append(avg_normal)
-	
-	# Build output arrays
-	var output_arrays = []
-	output_arrays.resize(Mesh.ARRAY_MAX)
-	output_arrays[Mesh.ARRAY_VERTEX] = new_vertices
-	output_arrays[Mesh.ARRAY_NORMAL] = new_normals
-	output_arrays[Mesh.ARRAY_TEX_UV] = null
-	output_arrays[Mesh.ARRAY_COLOR] = null
 	output_arrays[Mesh.ARRAY_INDEX] = new_indices
 	
 	return output_arrays
