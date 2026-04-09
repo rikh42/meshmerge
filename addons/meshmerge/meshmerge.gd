@@ -11,9 +11,9 @@ var preserve_colors_checkbox: CheckBox
 var merge_materials: CheckBox
 var selected_meshes: Array[MeshInstance3D] = []
 
-var threshold : float = 180.0
-var preserve_uvs : bool = false
-var preserve_colors : bool = false
+var threshold : float = 0.0
+var preserve_uvs : bool = true
+var preserve_colors : bool = true
 var merge : bool = false
 
 
